@@ -120,13 +120,16 @@ async function processWebhookEvent(eventType, data) {
 }
 
 /**
- * Process order created events
+ * Process order created events - Enhanced for Payment Status Tracking
  */
 async function processOrderCreated(data) {
   const metrics = [];
   const date = data.order_date ? data.order_date.split('T')[0] : new Date().toISOString().split('T')[0];
 
-  // Order count metric
+  // Enhanced Payment Status Tracking
+  const paymentStatus = determinePaymentStatus(data);
+  
+  // Order count metric with payment status
   metrics.push({
     metric_name: 'shiprocket_orders_created',
     value: 1,
@@ -136,11 +139,104 @@ async function processOrderCreated(data) {
       event: 'order_created',
       order_id: data.order_id,
       channel: data.channel_name || 'unknown',
-      payment_method: data.payment_method || 'unknown'
+      payment_method: data.payment_method || 'unknown',
+      payment_status: paymentStatus.status, // COD, Prepaid, Partially_Paid
+      is_cod: paymentStatus.isCOD,
+      is_fully_paid: paymentStatus.isFullyPaid,
+      is_partially_paid: paymentStatus.isPartiallyPaid
     }
   });
 
-  // Order value metric
+  // Payment Status Specific Metrics
+  metrics.push({
+    metric_name: 'shiprocket_payment_status',
+    value: 1,
+    date,
+    dimensions: {
+      source: 'shiprocket',
+      event: 'order_created',
+      order_id: data.order_id,
+      payment_status: paymentStatus.status,
+      payment_type: paymentStatus.isCOD ? 'COD' : 'Online'
+    }
+  });
+
+  // COD Orders Tracking
+  if (paymentStatus.isCOD) {
+    metrics.push({
+      metric_name: 'shiprocket_cod_orders',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'order_created',
+        order_id: data.order_id,
+        cod_amount: paymentStatus.codAmount
+      }
+    });
+
+    // COD Amount Metric
+    if (paymentStatus.codAmount > 0) {
+      metrics.push({
+        metric_name: 'shiprocket_cod_amount',
+        value: paymentStatus.codAmount,
+        date,
+        dimensions: {
+          source: 'shiprocket',
+          event: 'order_created',
+          order_id: data.order_id,
+          currency: 'INR'
+        }
+      });
+    }
+  }
+
+  // Prepaid Orders Tracking
+  if (paymentStatus.isPrepaid) {
+    metrics.push({
+      metric_name: 'shiprocket_prepaid_orders',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'order_created',
+        order_id: data.order_id,
+        prepaid_amount: paymentStatus.paidAmount
+      }
+    });
+  }
+
+  // Partially Paid Orders Tracking
+  if (paymentStatus.isPartiallyPaid) {
+    metrics.push({
+      metric_name: 'shiprocket_partially_paid_orders',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'order_created',
+        order_id: data.order_id,
+        paid_amount: paymentStatus.paidAmount,
+        outstanding_amount: paymentStatus.outstandingAmount,
+        total_amount: paymentStatus.totalAmount
+      }
+    });
+
+    // Outstanding Amount Metric
+    metrics.push({
+      metric_name: 'shiprocket_outstanding_amount',
+      value: paymentStatus.outstandingAmount,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'order_created',
+        order_id: data.order_id,
+        currency: 'INR'
+      }
+    });
+  }
+
+  // Order value metric with payment breakdown
   if (data.total_amount) {
     metrics.push({
       metric_name: 'shiprocket_order_value',
@@ -151,7 +247,10 @@ async function processOrderCreated(data) {
         event: 'order_created',
         order_id: data.order_id,
         channel: data.channel_name || 'unknown',
-        currency: 'INR'
+        currency: 'INR',
+        payment_status: paymentStatus.status,
+        paid_amount: paymentStatus.paidAmount,
+        outstanding_amount: paymentStatus.outstandingAmount
       }
     });
   }
@@ -165,7 +264,8 @@ async function processOrderCreated(data) {
       dimensions: {
         source: 'shiprocket',
         event: 'order_created',
-        order_id: data.order_id
+        order_id: data.order_id,
+        payment_status: paymentStatus.status
       }
     });
 
@@ -178,12 +278,69 @@ async function processOrderCreated(data) {
       dimensions: {
         source: 'shiprocket',
         event: 'order_created',
-        order_id: data.order_id
+        order_id: data.order_id,
+        payment_status: paymentStatus.status
       }
     });
   }
 
   return metrics;
+}
+
+/**
+ * Determine comprehensive payment status from Shiprocket order data
+ */
+function determinePaymentStatus(orderData) {
+  const totalAmount = parseFloat(orderData.total_amount || 0);
+  const paidAmount = parseFloat(orderData.amount_paid || orderData.paid_amount || 0);
+  const codAmount = parseFloat(orderData.cod_amount || orderData.cash_on_delivery_amount || 0);
+  const paymentMethod = (orderData.payment_method || '').toLowerCase();
+  
+  // Check if COD order
+  const isCOD = paymentMethod.includes('cod') || 
+                paymentMethod.includes('cash') || 
+                codAmount > 0 ||
+                orderData.is_cod === true ||
+                orderData.payment_mode === 'COD';
+
+  // Determine payment status
+  let status = 'Unknown';
+  let isFullyPaid = false;
+  let isPartiallyPaid = false;
+  let isPrepaid = false;
+  let outstandingAmount = 0;
+
+  if (isCOD) {
+    status = 'COD';
+    outstandingAmount = codAmount > 0 ? codAmount : totalAmount;
+  } else if (paidAmount >= totalAmount && totalAmount > 0) {
+    status = 'Fully_Paid';
+    isFullyPaid = true;
+    isPrepaid = true;
+  } else if (paidAmount > 0 && paidAmount < totalAmount) {
+    status = 'Partially_Paid';
+    isPartiallyPaid = true;
+    outstandingAmount = totalAmount - paidAmount;
+  } else if (paidAmount === 0 && totalAmount > 0) {
+    status = 'Unpaid';
+    outstandingAmount = totalAmount;
+  } else if (totalAmount === 0) {
+    status = 'Free_Order';
+    isFullyPaid = true;
+  }
+
+  return {
+    status,
+    isCOD,
+    isFullyPaid,
+    isPartiallyPaid,
+    isPrepaid,
+    totalAmount,
+    paidAmount,
+    codAmount: isCOD ? (codAmount > 0 ? codAmount : totalAmount) : 0,
+    outstandingAmount,
+    paymentMethod: orderData.payment_method || 'Unknown'
+  };
 }
 
 /**
@@ -247,11 +404,14 @@ async function processOrderShipped(data) {
 }
 
 /**
- * Process order delivered events
+ * Process order delivered events - Enhanced for COD Payment Collection
  */
 async function processOrderDelivered(data) {
   const metrics = [];
   const date = data.delivered_date ? data.delivered_date.split('T')[0] : new Date().toISOString().split('T')[0];
+
+  // Determine if this was a COD order and track payment collection
+  const paymentStatus = determinePaymentStatus(data);
 
   // Delivery success metric
   metrics.push({
@@ -263,9 +423,58 @@ async function processOrderDelivered(data) {
       event: 'order_delivered',
       order_id: data.order_id,
       shipment_id: data.shipment_id,
-      courier: data.courier_name || 'unknown'
+      courier: data.courier_name || 'unknown',
+      payment_status: paymentStatus.status,
+      was_cod: paymentStatus.isCOD
     }
   });
+
+  // COD Payment Collection Tracking
+  if (paymentStatus.isCOD) {
+    metrics.push({
+      metric_name: 'shiprocket_cod_collected',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'cod_collected',
+        order_id: data.order_id,
+        shipment_id: data.shipment_id,
+        collection_status: 'collected'
+      }
+    });
+
+    // COD Collection Amount
+    if (paymentStatus.codAmount > 0) {
+      metrics.push({
+        metric_name: 'shiprocket_cod_collection_amount',
+        value: paymentStatus.codAmount,
+        date,
+        dimensions: {
+          source: 'shiprocket',
+          event: 'cod_collected',
+          order_id: data.order_id,
+          currency: 'INR',
+          collection_method: 'delivery'
+        }
+      });
+    }
+
+    // Payment Status Update - COD order is now fully paid
+    metrics.push({
+      metric_name: 'shiprocket_payment_status_updated',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'payment_collected',
+        order_id: data.order_id,
+        previous_status: 'COD',
+        new_status: 'Fully_Paid',
+        collection_method: 'COD_Delivery'
+      }
+    });
+  }
 
   // Calculate delivery time
   if (data.shipped_date && data.delivered_date) {
@@ -282,7 +491,8 @@ async function processOrderDelivered(data) {
         event: 'order_delivered',
         order_id: data.order_id,
         courier: data.courier_name || 'unknown',
-        unit: 'hours'
+        unit: 'hours',
+        payment_type: paymentStatus.isCOD ? 'COD' : 'Prepaid'
       }
     });
   }
@@ -301,7 +511,8 @@ async function processOrderDelivered(data) {
         source: 'shiprocket',
         event: 'order_delivered',
         order_id: data.order_id,
-        unit: 'hours'
+        unit: 'hours',
+        payment_type: paymentStatus.isCOD ? 'COD' : 'Prepaid'
       }
     });
   }
@@ -347,7 +558,7 @@ async function processOrderCancelled(data) {
 }
 
 /**
- * Process order returned/RTO events
+ * Process order returned/RTO events - Enhanced for Failed COD Collection Tracking
  */
 async function processOrderReturned(data) {
   const metrics = [];
@@ -356,6 +567,7 @@ async function processOrderReturned(data) {
     new Date().toISOString().split('T')[0];
 
   const isRTO = data.event_type === 'rto' || data.return_type === 'rto';
+  const paymentStatus = determinePaymentStatus(data);
 
   metrics.push({
     metric_name: isRTO ? 'shiprocket_rto_orders' : 'shiprocket_returns',
@@ -366,9 +578,59 @@ async function processOrderReturned(data) {
       event: isRTO ? 'rto' : 'return',
       order_id: data.order_id,
       shipment_id: data.shipment_id,
-      reason: data.return_reason || 'unknown'
+      reason: data.return_reason || 'unknown',
+      payment_status: paymentStatus.status,
+      was_cod: paymentStatus.isCOD
     }
   });
+
+  // Failed COD Collection Tracking (for RTO events)
+  if (isRTO && paymentStatus.isCOD) {
+    metrics.push({
+      metric_name: 'shiprocket_cod_collection_failed',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'cod_collection_failed',
+        order_id: data.order_id,
+        shipment_id: data.shipment_id,
+        failure_reason: data.return_reason || 'rto',
+        collection_status: 'failed'
+      }
+    });
+
+    // Failed COD Collection Amount
+    if (paymentStatus.codAmount > 0) {
+      metrics.push({
+        metric_name: 'shiprocket_cod_collection_failed_amount',
+        value: paymentStatus.codAmount,
+        date,
+        dimensions: {
+          source: 'shiprocket',
+          event: 'cod_collection_failed',
+          order_id: data.order_id,
+          currency: 'INR',
+          failure_type: 'rto'
+        }
+      });
+    }
+
+    // Payment Status - COD order remains unpaid
+    metrics.push({
+      metric_name: 'shiprocket_payment_status_updated',
+      value: 1,
+      date,
+      dimensions: {
+        source: 'shiprocket',
+        event: 'payment_failed',
+        order_id: data.order_id,
+        previous_status: 'COD',
+        new_status: 'Failed_Collection',
+        failure_method: 'RTO'
+      }
+    });
+  }
 
   // Return cost metric
   if (data.return_charges) {
@@ -380,7 +642,8 @@ async function processOrderReturned(data) {
         source: 'shiprocket',
         event: isRTO ? 'rto' : 'return',
         order_id: data.order_id,
-        currency: 'INR'
+        currency: 'INR',
+        payment_type: paymentStatus.isCOD ? 'COD' : 'Prepaid'
       }
     });
   }

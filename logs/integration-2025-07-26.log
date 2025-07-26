@@ -677,3 +677,141 @@
   level: 'info',
   message: '13.235.14.74 - - [26/Jul/2025:08:49:57 +0000] "POST /prod/shipmentStatus/shipmentTrack HTTP/1.1" 404 173 "-" "-"'
 }
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'production',
+  startDate: '2025-01-15',
+  endDate: '2025-01-25',
+  syncType: 'orders',
+  timestamp: '2025-07-26 14:23:13',
+  level: 'info',
+  message: 'Manual sync requested'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'production',
+  error: {
+    message: 'Request failed with status code 400',
+    stack: 'AxiosError: Request failed with status code 400\n' +
+      '    at settle (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:2090:12)\n' +
+      '    at IncomingMessage.handleStreamEnd (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:3207:11)\n' +
+      '    at IncomingMessage.emit (node:events:531:35)\n' +
+      '    at endReadableNT (node:internal/streams/readable:1698:12)\n' +
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n' +
+      '    at Axios.request (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:4317:41)\n' +
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n' +
+      '    at async ShiprocketAPI.authenticate (C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:80:24)\n' +
+      '    at async ShiprocketAPI.ensureAuthenticated (C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:98:7)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:27:9\n' +
+      '    at async Axios.request (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:4312:14)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:118:24\n' +
+      '    at async retryRequest (C:\\shiprocket-triple-whale-integration\\src\\utils\\retry.js:24:22)\n' +
+      '    at async syncOrders (C:\\shiprocket-triple-whale-integration\\src\\server.js:277:18)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\server.js:211:18',
+    name: 'AxiosError'
+  },
+  timestamp: '2025-07-26 14:23:13',
+  level: 'error',
+  message: 'Shiprocket authentication failed'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'production',
+  attempt: 1,
+  reason: 'shouldRetry returned false',
+  error: {
+    message: "Cannot read properties of undefined (reading 'metadata')",
+    stack: "TypeError: Cannot read properties of undefined (reading 'metadata')\n" +
+      '    at C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:54:47\n' +
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n' +
+      '    at async Axios.request (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:4312:14)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:118:24\n' +
+      '    at async retryRequest (C:\\shiprocket-triple-whale-integration\\src\\utils\\retry.js:24:22)\n' +
+      '    at async syncOrders (C:\\shiprocket-triple-whale-integration\\src\\server.js:277:18)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\server.js:211:18',
+    name: 'TypeError'
+  },
+  timestamp: '2025-07-26 14:23:13',
+  level: 'error',
+  message: 'Request failed, not retrying'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'production',
+  error: {
+    message: "Cannot read properties of undefined (reading 'metadata')",
+    stack: "TypeError: Cannot read properties of undefined (reading 'metadata')\n" +
+      '    at C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:54:47\n' +
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n' +
+      '    at async Axios.request (C:\\shiprocket-triple-whale-integration\\node_modules\\axios\\dist\\node\\axios.cjs:4312:14)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\api\\shiprocket.js:118:24\n' +
+      '    at async retryRequest (C:\\shiprocket-triple-whale-integration\\src\\utils\\retry.js:24:22)\n' +
+      '    at async syncOrders (C:\\shiprocket-triple-whale-integration\\src\\server.js:277:18)\n' +
+      '    at async C:\\shiprocket-triple-whale-integration\\src\\server.js:211:18',
+    name: 'TypeError'
+  },
+  timestamp: '2025-07-26 14:23:13',
+  level: 'error',
+  message: 'Manual sync failed'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'production',
+  timestamp: '2025-07-26 14:23:13',
+  level: 'info',
+  message: '::1 - - [26/Jul/2025:08:53:13 +0000] "POST /api/sync/manual HTTP/1.1" 500 115 "-" "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-IN) WindowsPowerShell/5.1.26100.4652"'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  timestamp: '2025-07-26 16:30:59',
+  level: 'info',
+  message: 'Scheduled daily sync job configured for 12:05 AM IST'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  port: '3000',
+  host: 'localhost',
+  realTimeSync: true,
+  scheduledSync: '12:05 AM IST daily',
+  timestamp: '2025-07-26 16:30:59',
+  level: 'info',
+  message: '🚀 Shiprocket-Triple Whale Integration Server started'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  timestamp: '2025-07-26 16:31:22',
+  level: 'info',
+  message: 'Scheduled daily sync job configured for 12:05 AM IST'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  port: '3000',
+  host: 'localhost',
+  realTimeSync: true,
+  scheduledSync: '12:05 AM IST daily',
+  timestamp: '2025-07-26 16:31:22',
+  level: 'info',
+  message: '🚀 Shiprocket-Triple Whale Integration Server started'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  timestamp: '2025-07-26 16:31:24',
+  level: 'info',
+  message: 'Scheduled daily sync job configured for 12:05 AM IST'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  port: '3000',
+  host: 'localhost',
+  realTimeSync: true,
+  scheduledSync: '12:05 AM IST daily',
+  timestamp: '2025-07-26 16:31:24',
+  level: 'info',
+  message: '🚀 Shiprocket-Triple Whale Integration Server started'
+}
