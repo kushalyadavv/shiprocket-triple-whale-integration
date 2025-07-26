@@ -815,3 +815,21 @@
   level: 'info',
   message: '🚀 Shiprocket-Triple Whale Integration Server started'
 }
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  timestamp: '2025-07-26 16:31:46',
+  level: 'info',
+  message: 'Scheduled daily sync job configured for 12:05 AM IST'
+}
+{
+  service: 'shiprocket-triple-whale-integration',
+  environment: 'development',
+  port: '3000',
+  host: 'localhost',
+  realTimeSync: true,
+  scheduledSync: '12:05 AM IST daily',
+  timestamp: '2025-07-26 16:31:46',
+  level: 'info',
+  message: '🚀 Shiprocket-Triple Whale Integration Server started'
+}
